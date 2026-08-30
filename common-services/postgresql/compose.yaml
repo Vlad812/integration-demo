@@ -1,0 +1,29 @@
+services:
+  cs-pg-integration:
+    image: postgres:17-alpine
+    container_name: cs-pg-integration
+    environment:
+      POSTGRES_USER: my_postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: integration_broker_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - integration_demo_pg_data:/var/lib/postgresql/data
+      - ./Init:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U my_postgres -d integration_broker_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - integration_demo_net
+
+volumes:
+  integration_demo_pg_data:
+
+networks:
+  integration_demo_net:
+    external: true

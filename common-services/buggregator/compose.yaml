@@ -1,0 +1,24 @@
+services:
+  buggregator:
+    image: ghcr.io/buggregator/server:latest
+    container_name: buggregator
+    ports:
+      - "8000:8000"
+      - "1025:1025"
+      - "9912:9912"
+      - "9913:9913"
+      - "3000:3000"
+    environment:
+      - APP_ENV=production
+    networks:
+      - integration_demo_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=integration_demo_net"
+      - "traefik.http.routers.buggregator.rule=Host(`buggregator.integration-demo.local`)"
+      - "traefik.http.routers.buggregator.entrypoints=web"
+      - "traefik.http.services.buggregator.loadbalancer.server.port=8000"
+
+networks:
+  integration_demo_net:
+    external: true

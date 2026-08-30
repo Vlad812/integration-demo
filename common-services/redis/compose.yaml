@@ -1,0 +1,31 @@
+services:
+  cs-redis:
+    image: redis:7-alpine
+    container_name: cs-redis
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --save
+      - "60"
+      - "1"
+    ports:
+      - "6379:6379"
+    volumes:
+      - integration_demo_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - integration_demo_net
+
+volumes:
+  integration_demo_redis_data:
+
+networks:
+  integration_demo_net:
+    external: true
