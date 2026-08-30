@@ -25,15 +25,9 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=integration_demo_net"
       - "traefik.http.services.integration-broker-api.loadbalancer.server.port=8080"
-      - "traefik.http.routers.integration-broker-api-orders.rule=Host(`api.integration-demo.local`) && PathPrefix(`/api/v1/investments/orders`)"
-      - "traefik.http.routers.integration-broker-api-orders.entrypoints=web"
-      - "traefik.http.routers.integration-broker-api-orders.service=integration-broker-api"
-      - "traefik.http.routers.integration-broker-api-portfolio.rule=Host(`api.integration-demo.local`) && PathPrefix(`/api/v1/investments/portfolio`)"
-      - "traefik.http.routers.integration-broker-api-portfolio.entrypoints=web"
-      - "traefik.http.routers.integration-broker-api-portfolio.service=integration-broker-api"
-      - "traefik.http.routers.integration-broker-api-trades.rule=Host(`api.integration-demo.local`) && PathPrefix(`/api/v1/investments/trades`)"
-      - "traefik.http.routers.integration-broker-api-trades.entrypoints=web"
-      - "traefik.http.routers.integration-broker-api-trades.service=integration-broker-api"
+      - "traefik.http.routers.integration-broker-api.rule=Host(`api.integration-demo.local`) && (Path(`/health`) || PathPrefix(`/api/v1/investments/`))"
+      - "traefik.http.routers.integration-broker-api.entrypoints=web"
+      - "traefik.http.routers.integration-broker-api.service=integration-broker-api"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
       interval: 10s
