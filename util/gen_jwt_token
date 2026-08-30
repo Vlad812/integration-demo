@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CLIENT_ID="${1:-usr_987654321}"
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+APP_DIR="${ROOT}/main-services/integration-broker-api/app"
+CLI_IMAGE="${CLI_IMAGE:-integration-broker-api-php-cli-image}"
+PRIVATE_KEY="${APP_DIR}/config/jwt/private.pem"
+HTTP_CLIENT_PRIVATE_ENV="${APP_DIR}/http-client.private.env.json"
+
+if [[ ! -f "${PRIVATE_KEY}" ]]; then
+    echo "JWT private key not found. Run: make gen-jwt" >&2
+    exit 1
+fi
+
+if ! docker image inspect "${CLI_IMAGE}" >/dev/null 2>&1; then
+    echo "Docker image ${CLI_IMAGE} not found. Run: make app-setup" >&2
+    exit 1
+fi
+
+TOKEN="$(docker run --rm \
+    -v "${APP_DIR}:/var/www/html" \
+    -w /var/www/html \
+    "${CLI_IMAGE}" \
+    php bin/console lexik:jwt:generate-token "${CLIENT_ID}" | tr -d '\r\n')"
+
+if [[ -z "${TOKEN}" ]]; then
+    echo "Failed to generate JWT token." >&2
+    exit 1
+fi
+
+cat > "${HTTP_CLIENT_PRIVATE_ENV}" <<EOF
+{
+  "dev": {
+    "token": "${TOKEN}"
+  }
+}
+EOF
+chmod 600 "${HTTP_CLIENT_PRIVATE_ENV}"
+
+echo "JWT token saved to ${HTTP_CLIENT_PRIVATE_ENV}"
+echo "${TOKEN}"

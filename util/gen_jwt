@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+APP_DIR="${ROOT}/main-services/integration-broker-api/app"
+JWT_DIR="${APP_DIR}/config/jwt"
+PRIVATE_KEY="${JWT_DIR}/private.pem"
+PUBLIC_KEY="${JWT_DIR}/public.pem"
+
+if ! command -v openssl >/dev/null 2>&1; then
+    echo "openssl is required but not installed" >&2
+    exit 1
+fi
+
+mkdir -p "${JWT_DIR}"
+
+if [[ -f "${PRIVATE_KEY}" && -f "${PUBLIC_KEY}" ]]; then
+    if grep -q 'ENCRYPTED PRIVATE KEY' "${PRIVATE_KEY}"; then
+        echo "Removing encrypted JWT keys (passphrase no longer used)..."
+        rm -f "${PRIVATE_KEY}" "${PUBLIC_KEY}"
+    else
+        echo "JWT keys already exist: ${JWT_DIR}"
+        exit 0
+    fi
+fi
+
+echo "Generating JWT keys (no passphrase) in ${JWT_DIR}..."
+
+openssl genpkey \
+    -out "${PRIVATE_KEY}" \
+    -algorithm rsa \
+    -pkeyopt rsa_keygen_bits:4096
+
+openssl pkey \
+    -in "${PRIVATE_KEY}" \
+    -pubout \
+    -out "${PUBLIC_KEY}"
+
+chmod 600 "${PRIVATE_KEY}"
+chmod 644 "${PUBLIC_KEY}"
+
+echo "Done."
