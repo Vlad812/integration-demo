@@ -1,0 +1,61 @@
+x-app-environment: &app-environment
+  APP_ENV: dev
+  APP_DEBUG: 1
+  APP_SECRET: 75914121030ad559bbae482519258ce1
+  DATABASE_URL: "postgresql://my_postgres:postgres@cs-pg-integration:5432/integration_broker_db?serverVersion=17&charset=utf8"
+  REDIS_URL: "redis://cs-redis:6379"
+  MESSENGER_TRANSPORT_DSN: "amqp://my_rabbit:rabbit@cs-rabbitmq:5672/integration"
+  BROKER_API_BASE_URL: "http://wiremock:8080"
+
+services:
+  integration-broker-api:
+    image: integration-broker-api-image
+    container_name: integration-broker-api
+    build:
+      context: .
+      dockerfile: ./Docker/RR/Dockerfile
+    volumes:
+      - ./app:/var/www/html
+    environment:
+      <<: *app-environment
+      APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
+      VAR_DUMPER_FORMAT: server
+      VAR_DUMPER_SERVER: buggregator:9912
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=integration_demo_net"
+      - "traefik.http.services.integration-broker-api.loadbalancer.server.port=8080"
+      - "traefik.http.routers.integration-broker-api-orders.rule=Host(`api.integration-demo.local`) && PathPrefix(`/api/v1/investments/orders`)"
+      - "traefik.http.routers.integration-broker-api-orders.entrypoints=web"
+      - "traefik.http.routers.integration-broker-api-orders.service=integration-broker-api"
+      - "traefik.http.routers.integration-broker-api-portfolio.rule=Host(`api.integration-demo.local`) && PathPrefix(`/api/v1/investments/portfolio`)"
+      - "traefik.http.routers.integration-broker-api-portfolio.entrypoints=web"
+      - "traefik.http.routers.integration-broker-api-portfolio.service=integration-broker-api"
+      - "traefik.http.routers.integration-broker-api-trades.rule=Host(`api.integration-demo.local`) && PathPrefix(`/api/v1/investments/trades`)"
+      - "traefik.http.routers.integration-broker-api-trades.entrypoints=web"
+      - "traefik.http.routers.integration-broker-api-trades.service=integration-broker-api"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - integration_demo_net
+
+  integration-broker-api-php-cli:
+    image: integration-broker-api-php-cli-image
+    container_name: integration-broker-api-php-cli
+    build:
+      context: .
+      dockerfile: ./Docker/cli/Dockerfile
+    volumes:
+      - ./app:/var/www/html
+    environment:
+      <<: *app-environment
+    networks:
+      - integration_demo_net
+
+networks:
+  integration_demo_net:
+    external: true
