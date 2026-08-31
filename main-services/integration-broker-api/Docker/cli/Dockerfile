@@ -37,6 +37,9 @@ RUN set -eux; \
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+COPY Docker/cli/outbox-relay-entrypoint.sh /outbox-relay-entrypoint.sh
+RUN sed -i 's/\r$//' /outbox-relay-entrypoint.sh && chmod +x /outbox-relay-entrypoint.sh
+
 WORKDIR /var/www/html
 
 RUN chown -R www-data:www-data /var/www/html

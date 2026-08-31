@@ -5,7 +5,14 @@ x-app-environment: &app-environment
   DATABASE_URL: "postgresql://my_postgres:postgres@cs-pg-integration:5432/integration_broker_db?serverVersion=17&charset=utf8"
   REDIS_URL: "redis://cs-redis:6379"
   MESSENGER_TRANSPORT_DSN: "amqp://my_rabbit:rabbit@cs-rabbitmq:5672/integration"
+  RABBITMQ_HOST: "cs-rabbitmq"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USER: "my_rabbit"
+  RABBITMQ_PASS: "rabbit"
+  RABBITMQ_VHOST: "integration"
   BROKER_API_BASE_URL: "http://wiremock:8080"
+  OUTBOX_DELAY_MS: "30000"
+  MONOLOG_SOCKET_HOST: "tcp://buggregator:9913"
 
 services:
   integration-broker-api:
@@ -43,6 +50,26 @@ services:
     build:
       context: .
       dockerfile: ./Docker/cli/Dockerfile
+    volumes:
+      - ./app:/var/www/html
+    environment:
+      <<: *app-environment
+    networks:
+      - integration_demo_net
+
+  integration-broker-api-outbox-relay:
+    image: integration-broker-api-php-cli-image
+    container_name: integration-broker-api-outbox-relay
+    build:
+      context: .
+      dockerfile: ./Docker/cli/Dockerfile
+    command:
+      [
+        "sh",
+        "-c",
+        "php bin/console cache:clear --no-warmup && exec php bin/console messenger:consume outbox --no-interaction -vv --sleep=1",
+      ]
+    restart: unless-stopped
     volumes:
       - ./app:/var/www/html
     environment:
