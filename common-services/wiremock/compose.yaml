@@ -1,0 +1,15 @@
+services:
+  wiremock:
+    image: wiremock/wiremock:3.13.2
+    container_name: cs-wiremock
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./mappings:/home/wiremock/mappings:ro
+    networks:
+      - integration_demo_net
+
+networks:
+  integration_demo_net:
+    external: true
