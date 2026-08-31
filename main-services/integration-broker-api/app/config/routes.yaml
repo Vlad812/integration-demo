@@ -1,0 +1,5 @@
+actions:
+    resource:
+        path: ../src/Infrastructure/Http/Action/
+        namespace: App\Infrastructure\Http\Action
+    type: attribute

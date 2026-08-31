@@ -1,0 +1,26 @@
+# Loads after monolog.yaml (z_ prefix). File + Buggregator :9913 for order_flow.
+# type: socket is listed in MonologBundle but has no buildHandler case — use type: service.
+monolog:
+    channels:
+        - deprecation
+        - order_flow
+
+when@dev:
+    monolog:
+        handlers:
+            main:
+                channels: ["!event", "!order_flow"]
+            console:
+                channels: ["!event", "!doctrine", "!console", "!order_flow"]
+            order_flow:
+                type: whatfailuregroup
+                members: [order_flow_file, order_flow_buggregator]
+                channels: ["order_flow"]
+            order_flow_file:
+                type: stream
+                path: "%kernel.logs_dir%/order-flow.json.log"
+                level: debug
+                formatter: App\Infrastructure\Logging\PrettyJsonFormatter
+            order_flow_buggregator:
+                type: service
+                id: app.monolog.handler.buggregator_socket

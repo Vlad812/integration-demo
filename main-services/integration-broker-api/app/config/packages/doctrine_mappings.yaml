@@ -1,0 +1,10 @@
+# Overrides the Flex recipe mapping (src/Entity) — ORM entities live in EntityOrm.
+doctrine:
+    orm:
+        mappings:
+            App:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Infrastructure/Persistence/Doctrine/EntityOrm'
+                prefix: 'App\Infrastructure\Persistence\Doctrine\EntityOrm'
+                alias: App

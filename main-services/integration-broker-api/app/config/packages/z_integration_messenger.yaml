@@ -1,0 +1,42 @@
+# Loads after messenger.yaml (z_ prefix). This file wins on merge.
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            # Stage 2 consume: PostgreSQL outbox. Only this name is passed to messenger:consume.
+            outbox:
+                dsn: 'doctrine://default?queue_name=outbox&auto_setup=0'
+                options:
+                    use_notify: false
+                retry_strategy:
+                    max_retries: 5
+                    delay: 5000
+                    multiplier: 4
+            failed:
+                dsn: 'doctrine://default?queue_name=failed&auto_setup=0'
+            # Stage 2 send only. Do not pass "broker" to messenger:consume (that would be AmqpReceiver).
+            broker:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    auto_setup: true
+                    confirm_timeout: 5.0
+                    exchange:
+                        name: integration_orders
+                        type: direct
+                        default_publish_routing_key: send_order_to_broker
+                    queues:
+                        send_order_to_broker:
+                            binding_keys:
+                                - send_order_to_broker
+
+        routing:
+            App\Application\Message\SendOrderToBrokerMessage: outbox
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                outbox: 'in-memory://'
+                failed: 'in-memory://'
+                broker: 'in-memory://'

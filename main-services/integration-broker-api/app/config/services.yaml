@@ -1,0 +1,39 @@
+parameters:
+    env(MESSENGER_TRANSPORT_DSN): 'amqp://my_rabbit:rabbit@cs-rabbitmq:5672/integration'
+    env(OUTBOX_DELAY_MS): '0'
+    env(MONOLOG_SOCKET_HOST): 'tcp://buggregator:9913'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+
+    App\Domain\Repository\OrderRepositoryInterface:
+        class: App\Infrastructure\Persistence\Doctrine\Repository\DoctrineOrderRepository
+
+    App\Domain\Shared\UuidGeneratorInterface:
+        class: App\Infrastructure\Service\SymfonyUuidGenerator
+
+    App\Application\Shared\TransactionalInterface:
+        class: App\Infrastructure\Persistence\Doctrine\Transactional\DoctrineTransactional
+
+    App\Infrastructure\Messenger\BrokerOrderPublisher:
+        arguments:
+            $brokerTransport: '@messenger.transport.broker'
+
+    # MonologBundle has no working YAML type: socket; Buggregator needs SocketHandler + JSON.
+    app.monolog.handler.buggregator_socket:
+        class: Monolog\Handler\SocketHandler
+        autoconfigure: false
+        arguments:
+            $connectionString: '%env(MONOLOG_SOCKET_HOST)%'
+            $persistent: false
+            $timeout: 1.0
+            $writingTimeout: 1.0
+            $connectionTimeout: 0.5
+            $chunkSize: 10
+        calls:
+            - [setFormatter, ['@monolog.formatter.json']]
