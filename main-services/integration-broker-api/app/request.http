@@ -1,0 +1,39 @@
+# PhpStorm HTTP Client — environment: dev
+# JWT keys:  make gen-jwt
+# JWT token: make gen-jwt-token  → http-client.private.env.json
+
+### Health (public)
+GET {{baseUrl}}/health
+Accept: application/json
+
+###
+
+### Create order (POST /api/v1/investments/orders)
+POST {{baseUrl}}/api/v1/investments/orders
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{idempotencyKey}}
+
+{
+  "ticker": "AAPL",
+  "direction": "BUY",
+  "quantity": 10,
+  "type": "MARKET"
+}
+
+###
+
+### Create order — idempotent retry (same Idempotency-Key)
+POST {{baseUrl}}/api/v1/investments/orders
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{idempotencyKeyRetry}}
+
+{
+  "ticker": "AAPL",
+  "direction": "BUY",
+  "quantity": 10,
+  "type": "MARKET"
+}
