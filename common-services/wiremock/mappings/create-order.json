@@ -1,7 +1,12 @@
 {
   "request": {
     "method": "POST",
-    "url": "/v1/orders"
+    "url": "/v1/orders",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
   },
   "response": {
     "status": 202,
@@ -9,11 +14,12 @@
       "Content-Type": "application/json"
     },
     "jsonBody": {
-      "order_id": "ord_a1b2c3d4e5",
+      "order_id": "ord_{{randomValue type='UUID'}}",
       "status": "PENDING_ROUTING",
-      "created_at": "2026-08-26T10:15:30Z",
+      "created_at": "{{now format='yyyy-MM-dd'}}T{{now format='HH:mm:ss'}}Z",
       "expected_commission": "1.50"
     },
+    "transformers": ["response-template"],
     "fixedDelayMilliseconds": 1500
   }
 }

@@ -1,0 +1,16 @@
+parameters:
+    env(BROKER_API_BASE_URL): 'http://wiremock:8080'
+    env(BROKER_OAUTH_TOKEN_URL): 'http://wiremock:8080/oauth/token'
+    env(BROKER_OAUTH_CLIENT_ID): 'integration-client'
+    env(BROKER_OAUTH_CLIENT_SECRET): 'integration-secret'
+    env(REDIS_URL): 'redis://cs-redis:6379'
+
+framework:
+    http_client:
+        scoped_clients:
+            broker.http_client:
+                base_uri: '%env(BROKER_API_BASE_URL)%'
+                timeout: 15
+            broker.oauth_http_client:
+                base_uri: '%env(BROKER_OAUTH_TOKEN_URL)%'
+                timeout: 10

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Entity;
 
+use App\Domain\Exception\BusinessRuleViolationException;
 use App\Domain\ValueObject\ClientId;
 use App\Domain\ValueObject\Currency;
 use App\Domain\ValueObject\IdempotencyKey;
@@ -19,20 +20,23 @@ final class Order
 {
     /** @param array<string, mixed>|null $idempotencyResponse */
     private function __construct(
-        private readonly OrderId $id,
-        private readonly IdempotencyKey $idempotencyKey,
-        private readonly ClientId $clientId,
-        private readonly Ticker $ticker,
-        private readonly OrderDirection $direction,
-        private readonly OrderType $orderType,
-        private readonly Currency $currency,
-        private readonly Quantity $requestedQuantity,
-        private OrderStatus $status,
-        private int $executedQuantity,
-        private ?string $brokerOrderId,
-        private ?array $idempotencyResponse,
+        private readonly OrderId           $id,
+        private readonly IdempotencyKey    $idempotencyKey,
+        private readonly ClientId          $clientId,
+        private readonly Ticker            $ticker,
+        private readonly OrderDirection    $direction,
+        private readonly OrderType         $orderType,
+        private readonly Currency          $currency,
+        private readonly Quantity          $requestedQuantity,
+        private OrderStatus                $status,
+        private readonly int               $executedQuantity,
+        private ?string                    $brokerOrderId,
+        private ?string                    $brokerStatus,
+        private ?int                       $expectedCommissionCents,
+        private ?DateTimeImmutable         $brokerCreatedAt,
+        private ?array                     $idempotencyResponse,
         private readonly DateTimeImmutable $createdAt,
-        private DateTimeImmutable $updatedAt,
+        private DateTimeImmutable          $updatedAt,
     ) {
     }
 
@@ -60,6 +64,9 @@ final class Order
             status: OrderStatus::New,
             executedQuantity: 0,
             brokerOrderId: null,
+            brokerStatus: null,
+            expectedCommissionCents: null,
+            brokerCreatedAt: null,
             idempotencyResponse: null,
             createdAt: $now,
             updatedAt: $now,
@@ -79,6 +86,9 @@ final class Order
         OrderStatus $status,
         int $executedQuantity,
         ?string $brokerOrderId,
+        ?string $brokerStatus,
+        ?int $expectedCommissionCents,
+        ?DateTimeImmutable $brokerCreatedAt,
         ?array $idempotencyResponse,
         DateTimeImmutable $createdAt,
         DateTimeImmutable $updatedAt,
@@ -95,6 +105,9 @@ final class Order
             status: $status,
             executedQuantity: $executedQuantity,
             brokerOrderId: $brokerOrderId,
+            brokerStatus: $brokerStatus,
+            expectedCommissionCents: $expectedCommissionCents,
+            brokerCreatedAt: $brokerCreatedAt,
             idempotencyResponse: $idempotencyResponse,
             createdAt: $createdAt,
             updatedAt: $updatedAt,
@@ -106,6 +119,37 @@ final class Order
     {
         $this->idempotencyResponse = $response;
         $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function markSentToBroker(
+        string $brokerOrderId,
+        string $brokerStatus,
+        ?int $expectedCommissionCents,
+        DateTimeImmutable $brokerCreatedAt,
+    ): void {
+        if ($this->brokerOrderId !== null) {
+            return;
+        }
+
+        if ($this->status !== OrderStatus::New && $this->status !== OrderStatus::Retrying) {
+            throw new BusinessRuleViolationException(sprintf(
+                'Order "%s" cannot be sent to broker from status "%s".',
+                $this->id->toString(),
+                $this->status->value,
+            ));
+        }
+
+        $this->brokerOrderId = $brokerOrderId;
+        $this->brokerStatus = $brokerStatus;
+        $this->expectedCommissionCents = $expectedCommissionCents;
+        $this->brokerCreatedAt = $brokerCreatedAt;
+        $this->status = OrderStatus::SentToBroker;
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function isAlreadySentToBroker(): bool
+    {
+        return $this->brokerOrderId !== null;
     }
 
     public function id(): OrderId
@@ -161,6 +205,21 @@ final class Order
     public function brokerOrderId(): ?string
     {
         return $this->brokerOrderId;
+    }
+
+    public function brokerStatus(): ?string
+    {
+        return $this->brokerStatus;
+    }
+
+    public function expectedCommissionCents(): ?int
+    {
+        return $this->expectedCommissionCents;
+    }
+
+    public function brokerCreatedAt(): ?DateTimeImmutable
+    {
+        return $this->brokerCreatedAt;
     }
 
     /** @return array<string, mixed>|null */

@@ -4,7 +4,7 @@ framework:
         failure_transport: failed
 
         transports:
-            # Stage 2 consume: PostgreSQL outbox. Only this name is passed to messenger:consume.
+            # Stage 2 consume: PostgreSQL outbox relay.
             outbox:
                 dsn: 'doctrine://default?queue_name=outbox&auto_setup=0'
                 options:
@@ -15,7 +15,7 @@ framework:
                     multiplier: 4
             failed:
                 dsn: 'doctrine://default?queue_name=failed&auto_setup=0'
-            # Stage 2 send only. Do not pass "broker" to messenger:consume (that would be AmqpReceiver).
+            # Stage 2 publish (relay) + Stage 3 consume (broker worker).
             broker:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
@@ -29,6 +29,10 @@ framework:
                         send_order_to_broker:
                             binding_keys:
                                 - send_order_to_broker
+                retry_strategy:
+                    max_retries: 5
+                    delay: 5000
+                    multiplier: 4
 
         routing:
             App\Application\Message\SendOrderToBrokerMessage: outbox

@@ -1,0 +1,6 @@
+framework:
+    cache:
+        default_redis_provider: '%env(REDIS_URL)%'
+        pools:
+            cache.broker_token:
+                adapter: cache.adapter.redis

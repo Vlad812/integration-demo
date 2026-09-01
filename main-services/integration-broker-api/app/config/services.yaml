@@ -2,6 +2,11 @@ parameters:
     env(MESSENGER_TRANSPORT_DSN): 'amqp://my_rabbit:rabbit@cs-rabbitmq:5672/integration'
     env(OUTBOX_DELAY_MS): '0'
     env(MONOLOG_SOCKET_HOST): 'tcp://buggregator:9913'
+    env(REDIS_URL): 'redis://cs-redis:6379'
+    env(BROKER_API_BASE_URL): 'http://wiremock:8080'
+    env(BROKER_OAUTH_TOKEN_URL): 'http://wiremock:8080/oauth/token'
+    env(BROKER_OAUTH_CLIENT_ID): 'integration-client'
+    env(BROKER_OAUTH_CLIENT_SECRET): 'integration-secret'
 
 services:
     _defaults:
@@ -19,6 +24,12 @@ services:
 
     App\Application\Shared\TransactionalInterface:
         class: App\Infrastructure\Persistence\Doctrine\Transactional\DoctrineTransactional
+
+    App\Application\Shared\Broker\BrokerGatewayInterface:
+        class: App\Infrastructure\Broker\HttpBrokerGateway
+
+    App\Application\Shared\Broker\BrokerTokenProviderInterface:
+        class: App\Infrastructure\Broker\RedisBrokerTokenProvider
 
     App\Infrastructure\Messenger\BrokerOrderPublisher:
         arguments:

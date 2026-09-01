@@ -40,6 +40,10 @@ final class OrderMapper
         $orm->setRequestedQuantity($order->requestedQuantity()->toInt());
         $orm->setExecutedQuantity($order->executedQuantity());
         $orm->setStatus($order->status()->value);
+        $orm->setBrokerStatus($order->brokerStatus());
+        $expectedCommissionCents = $order->expectedCommissionCents();
+        $orm->setExpectedCommissionCents($expectedCommissionCents !== null ? (string) $expectedCommissionCents : null);
+        $orm->setBrokerCreatedAt($order->brokerCreatedAt());
         $orm->setIdempotencyResponse($order->idempotencyResponse());
         $orm->setCreatedAt($order->createdAt());
         $orm->setUpdatedAt($order->updatedAt());
@@ -47,6 +51,8 @@ final class OrderMapper
 
     public static function toDomain(OrderOrm $orm): Order
     {
+        $expectedCommissionCents = $orm->getExpectedCommissionCents();
+
         return Order::restore(
             id: OrderId::fromString($orm->getId()),
             idempotencyKey: IdempotencyKey::fromString($orm->getIdempotencyKey()),
@@ -59,6 +65,11 @@ final class OrderMapper
             status: OrderStatus::from($orm->getStatus()),
             executedQuantity: $orm->getExecutedQuantity(),
             brokerOrderId: $orm->getBrokerOrderId(),
+            brokerStatus: $orm->getBrokerStatus(),
+            expectedCommissionCents: $expectedCommissionCents !== null ? (int) $expectedCommissionCents : null,
+            brokerCreatedAt: $orm->getBrokerCreatedAt() !== null
+                ? DateTimeImmutable::createFromInterface($orm->getBrokerCreatedAt())
+                : null,
             idempotencyResponse: $orm->getIdempotencyResponse(),
             createdAt: DateTimeImmutable::createFromInterface($orm->getCreatedAt()),
             updatedAt: DateTimeImmutable::createFromInterface($orm->getUpdatedAt()),
