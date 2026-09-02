@@ -118,11 +118,28 @@ final readonly class RedisBrokerTokenProvider implements BrokerTokenProviderInte
 
         $statusCode = $response->getStatusCode();
 
-        if ($statusCode !== 200) {
-            throw BrokerFatalException::withStatus($statusCode, $response->getContent(false));
+        if ($statusCode === 200) {
+            return $this->parseTokenResponse($response->toArray(false));
         }
 
-        $payload = $response->toArray(false);
+        $body = $response->getContent(false);
+
+        if (in_array($statusCode, [429, 502, 503], true) || $statusCode >= 500) {
+            throw BrokerTransientException::withStatus($statusCode, $body);
+        }
+
+        if (in_array($statusCode, [400, 401, 403], true)) {
+            throw BrokerFatalException::withStatus($statusCode, $body);
+        }
+
+        throw BrokerFatalException::withStatus($statusCode, $body);
+    }
+
+    /** @param array<string, mixed> $payload
+     * @return array{access_token: string, expires_in: int}
+     */
+    private function parseTokenResponse(array $payload): array
+    {
         $accessToken = $payload['access_token'] ?? null;
         $expiresIn = $payload['expires_in'] ?? null;
 

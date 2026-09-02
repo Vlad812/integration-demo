@@ -147,6 +147,53 @@ final class Order
         $this->updatedAt = new DateTimeImmutable();
     }
 
+    public function markRetrying(): void
+    {
+        if ($this->brokerOrderId !== null) {
+            return;
+        }
+
+        if ($this->status === OrderStatus::Retrying) {
+            return;
+        }
+
+        if ($this->status !== OrderStatus::New) {
+            throw new BusinessRuleViolationException(sprintf(
+                'Order "%s" cannot be marked retrying from status "%s".',
+                $this->id->toString(),
+                $this->status->value,
+            ));
+        }
+
+        $this->status = OrderStatus::Retrying;
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function markFailed(?string $reason = null): void
+    {
+        if ($this->status === OrderStatus::Failed
+            || $this->status === OrderStatus::Rejected
+            || $this->status === OrderStatus::Filled
+        ) {
+            return;
+        }
+
+        if ($this->status !== OrderStatus::New && $this->status !== OrderStatus::Retrying) {
+            throw new BusinessRuleViolationException(sprintf(
+                'Order "%s" cannot be marked failed from status "%s".',
+                $this->id->toString(),
+                $this->status->value,
+            ));
+        }
+
+        if ($reason !== null && $reason !== '') {
+            $this->brokerStatus = $reason;
+        }
+
+        $this->status = OrderStatus::Failed;
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
     public function isAlreadySentToBroker(): bool
     {
         return $this->brokerOrderId !== null;

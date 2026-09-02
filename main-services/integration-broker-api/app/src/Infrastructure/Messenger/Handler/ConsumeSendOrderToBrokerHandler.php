@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Infrastructure\Messenger\Handler;
 
 use App\Application\Command\SendOrderToBroker\SendOrderToBrokerHandler;
+use App\Application\Exception\BrokerFatalException;
 use App\Application\Message\SendOrderToBrokerMessage;
 use App\Infrastructure\Logging\OrderFlowLogger;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
+use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 
 /**
- * Stage 3: RabbitMQ consumer — sends order to external broker API (WireMock locally).
+ * Stage 3–4: RabbitMQ consumer — sends order to external broker API, handles response outcomes.
  */
 #[AsMessageHandler(fromTransport: 'broker')]
 final readonly class ConsumeSendOrderToBrokerHandler
@@ -45,6 +47,12 @@ final readonly class ConsumeSendOrderToBrokerHandler
             ]);
 
             ($this->handler)($message);
+        } catch (BrokerFatalException $exception) {
+            throw new UnrecoverableMessageHandlingException(
+                $exception->getMessage(),
+                0,
+                $exception,
+            );
         } finally {
             $lock->release();
         }
