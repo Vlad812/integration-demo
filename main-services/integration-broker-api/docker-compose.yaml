@@ -16,6 +16,9 @@ x-app-environment: &app-environment
   BROKER_OAUTH_CLIENT_ID: "integration-client"
   BROKER_OAUTH_CLIENT_SECRET: "integration-secret"
   OUTBOX_DELAY_MS: "30000"
+  POLL_INTERVAL_SECONDS: "5"
+  POLL_BATCH_SIZE: "20"
+  POLL_MIN_AGE_SECONDS: "5"
   MONOLOG_SOCKET_HOST: "tcp://buggregator:9913"
 
 services:
@@ -87,6 +90,21 @@ services:
     environment:
       <<: *app-environment
       MESSENGER_CONSUME_TRANSPORT: broker
+    restart: unless-stopped
+    volumes:
+      - ./app:/var/www/html
+    networks:
+      - integration_demo_net
+
+  integration-broker-api-polling-worker:
+    image: integration-broker-api-php-cli-image
+    container_name: integration-broker-api-polling-worker
+    build:
+      context: .
+      dockerfile: ./Docker/cli/Dockerfile
+    entrypoint: ["/scheduler-consume-entrypoint.sh"]
+    environment:
+      <<: *app-environment
     restart: unless-stopped
     volumes:
       - ./app:/var/www/html

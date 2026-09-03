@@ -39,8 +39,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 COPY Docker/cli/outbox-relay-entrypoint.sh /outbox-relay-entrypoint.sh
 COPY Docker/cli/messenger-consume-entrypoint.sh /messenger-consume-entrypoint.sh
+COPY Docker/cli/scheduler-consume-entrypoint.sh /scheduler-consume-entrypoint.sh
 RUN sed -i 's/\r$//' /outbox-relay-entrypoint.sh && chmod +x /outbox-relay-entrypoint.sh \
-    && sed -i 's/\r$//' /messenger-consume-entrypoint.sh && chmod +x /messenger-consume-entrypoint.sh
+    && sed -i 's/\r$//' /messenger-consume-entrypoint.sh && chmod +x /messenger-consume-entrypoint.sh \
+    && sed -i 's/\r$//' /scheduler-consume-entrypoint.sh && chmod +x /scheduler-consume-entrypoint.sh
 
 WORKDIR /var/www/html
 
