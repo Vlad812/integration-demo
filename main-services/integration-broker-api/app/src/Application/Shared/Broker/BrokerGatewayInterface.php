@@ -9,4 +9,6 @@ use App\Domain\Entity\Order;
 interface BrokerGatewayInterface
 {
     public function createOrder(Order $order): BrokerCreateOrderResult;
+
+    public function getOrder(string $brokerOrderId): BrokerOrderSnapshot;
 }

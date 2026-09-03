@@ -22,4 +22,23 @@ enum OrderStatus: string
             default => false,
         };
     }
+
+    public function isPollable(): bool
+    {
+        return match ($this) {
+            self::SentToBroker, self::PendingRouting, self::PartiallyFilled => true,
+            default => false,
+        };
+    }
+
+    public static function fromBrokerStatus(string $brokerStatus): ?self
+    {
+        return match ($brokerStatus) {
+            'PENDING_ROUTING' => self::PendingRouting,
+            'PARTIALLY_FILLED' => self::PartiallyFilled,
+            'FILLED' => self::Filled,
+            'REJECTED' => self::Rejected,
+            default => null,
+        };
+    }
 }

@@ -21,4 +21,7 @@ interface OrderRepositoryInterface
     public function findByBrokerOrderId(string $brokerOrderId): ?Order;
 
     public function findByIdempotencyKey(ClientId $clientId, IdempotencyKey $key): ?Order;
+
+    /** @return list<Order> */
+    public function findDueForPolling(int $limit, int $minAgeSeconds): array;
 }

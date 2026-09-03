@@ -1,6 +1,9 @@
 parameters:
     env(MESSENGER_TRANSPORT_DSN): 'amqp://my_rabbit:rabbit@cs-rabbitmq:5672/integration'
     env(OUTBOX_DELAY_MS): '0'
+    env(POLL_INTERVAL_SECONDS): '5'
+    env(POLL_BATCH_SIZE): '20'
+    env(POLL_MIN_AGE_SECONDS): '5'
     env(MONOLOG_SOCKET_HOST): 'tcp://buggregator:9913'
     env(REDIS_URL): 'redis://cs-redis:6379'
     env(BROKER_API_BASE_URL): 'http://wiremock:8080'

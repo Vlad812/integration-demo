@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/v1/orders/ord_.*",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "order_id": "{{request.pathSegments.[2]}}",
+      "status": "PENDING_ROUTING",
+      "instrument_ticker": "AAPL",
+      "side": "BUY",
+      "requested_quantity": 10,
+      "executed_quantity": 0,
+      "average_execution_price": "0.00",
+      "executed_value": "0.00",
+      "currency": "USD",
+      "updated_at": "{{now format='yyyy-MM-dd'}}T{{now format='HH:mm:ss'}}Z"
+    },
+    "transformers": ["response-template"]
+  },
+  "scenarioName": "order-status-progression",
+  "requiredScenarioState": "Started",
+  "newScenarioState": "pending"
+}

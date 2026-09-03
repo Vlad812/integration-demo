@@ -41,9 +41,15 @@ final class OrderMapper
         $orm->setExecutedQuantity($order->executedQuantity());
         $orm->setStatus($order->status()->value);
         $orm->setBrokerStatus($order->brokerStatus());
+        $avgPriceCents = $order->avgPriceCents();
+        $orm->setAvgPriceCents($avgPriceCents !== null ? (string) $avgPriceCents : null);
+        $totalValueCents = $order->totalValueCents();
+        $orm->setTotalValueCents($totalValueCents !== null ? (string) $totalValueCents : null);
         $expectedCommissionCents = $order->expectedCommissionCents();
         $orm->setExpectedCommissionCents($expectedCommissionCents !== null ? (string) $expectedCommissionCents : null);
         $orm->setBrokerCreatedAt($order->brokerCreatedAt());
+        $orm->setBrokerUpdatedAt($order->brokerUpdatedAt());
+        $orm->setLastPolledAt($order->lastPolledAt());
         $orm->setIdempotencyResponse($order->idempotencyResponse());
         $orm->setCreatedAt($order->createdAt());
         $orm->setUpdatedAt($order->updatedAt());
@@ -52,6 +58,8 @@ final class OrderMapper
     public static function toDomain(OrderOrm $orm): Order
     {
         $expectedCommissionCents = $orm->getExpectedCommissionCents();
+        $avgPriceCents = $orm->getAvgPriceCents();
+        $totalValueCents = $orm->getTotalValueCents();
 
         return Order::restore(
             id: OrderId::fromString($orm->getId()),
@@ -66,9 +74,17 @@ final class OrderMapper
             executedQuantity: $orm->getExecutedQuantity(),
             brokerOrderId: $orm->getBrokerOrderId(),
             brokerStatus: $orm->getBrokerStatus(),
+            avgPriceCents: $avgPriceCents !== null ? (int) $avgPriceCents : null,
+            totalValueCents: $totalValueCents !== null ? (int) $totalValueCents : null,
             expectedCommissionCents: $expectedCommissionCents !== null ? (int) $expectedCommissionCents : null,
             brokerCreatedAt: $orm->getBrokerCreatedAt() !== null
                 ? DateTimeImmutable::createFromInterface($orm->getBrokerCreatedAt())
+                : null,
+            brokerUpdatedAt: $orm->getBrokerUpdatedAt() !== null
+                ? DateTimeImmutable::createFromInterface($orm->getBrokerUpdatedAt())
+                : null,
+            lastPolledAt: $orm->getLastPolledAt() !== null
+                ? DateTimeImmutable::createFromInterface($orm->getLastPolledAt())
                 : null,
             idempotencyResponse: $orm->getIdempotencyResponse(),
             createdAt: DateTimeImmutable::createFromInterface($orm->getCreatedAt()),

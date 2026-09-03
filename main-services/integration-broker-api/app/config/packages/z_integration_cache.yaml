@@ -4,3 +4,5 @@ framework:
         pools:
             cache.broker_token:
                 adapter: cache.adapter.redis
+            cache.scheduler_order_polling:
+                adapter: cache.adapter.redis

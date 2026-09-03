@@ -11,6 +11,7 @@ use App\Domain\Repository\OrderRepositoryInterface;
 use App\Domain\ValueObject\ClientId;
 use App\Domain\ValueObject\IdempotencyKey;
 use App\Domain\ValueObject\OrderId;
+use App\Domain\ValueObject\OrderStatus;
 use App\Infrastructure\Persistence\Doctrine\EntityOrm\OrderOrm;
 use App\Infrastructure\Persistence\Doctrine\Mapper\OrderMapper;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -99,6 +100,41 @@ final readonly class DoctrineOrderRepository implements OrderRepositoryInterface
         ]);
 
         return $orm !== null ? OrderMapper::toDomain($orm) : null;
+    }
+
+    public function findDueForPolling(int $limit, int $minAgeSeconds): array
+    {
+        $pollableStatuses = [
+            OrderStatus::SentToBroker->value,
+            OrderStatus::PendingRouting->value,
+            OrderStatus::PartiallyFilled->value,
+        ];
+
+        $qb = $this->entityManager()->createQueryBuilder();
+        $qb->select('o')
+            ->addSelect('CASE WHEN o.lastPolledAt IS NULL THEN 0 ELSE 1 END AS HIDDEN pollPriority')
+            ->from(OrderOrm::class, 'o')
+            ->where('o.brokerOrderId IS NOT NULL')
+            ->andWhere($qb->expr()->in('o.status', ':statuses'))
+            ->setParameter('statuses', $pollableStatuses)
+            ->orderBy('pollPriority', 'ASC')
+            ->addOrderBy('o.lastPolledAt', 'ASC')
+            ->addOrderBy('o.createdAt', 'ASC')
+            ->setMaxResults($limit);
+
+        if ($minAgeSeconds > 0) {
+            $threshold = (new \DateTimeImmutable())->modify(sprintf('-%d seconds', $minAgeSeconds));
+            $qb->andWhere('o.lastPolledAt IS NULL OR o.lastPolledAt < :threshold')
+                ->setParameter('threshold', $threshold);
+        }
+
+        /** @var list<OrderOrm> $orms */
+        $orms = $qb->getQuery()->getResult();
+
+        return array_map(
+            static fn (OrderOrm $orm): Order => OrderMapper::toDomain($orm),
+            $orms,
+        );
     }
 
     private function entityManager(): EntityManagerInterface

@@ -20,23 +20,27 @@ final class Order
 {
     /** @param array<string, mixed>|null $idempotencyResponse */
     private function __construct(
-        private readonly OrderId           $id,
-        private readonly IdempotencyKey    $idempotencyKey,
-        private readonly ClientId          $clientId,
-        private readonly Ticker            $ticker,
-        private readonly OrderDirection    $direction,
-        private readonly OrderType         $orderType,
-        private readonly Currency          $currency,
-        private readonly Quantity          $requestedQuantity,
-        private OrderStatus                $status,
-        private readonly int               $executedQuantity,
-        private ?string                    $brokerOrderId,
-        private ?string                    $brokerStatus,
-        private ?int                       $expectedCommissionCents,
-        private ?DateTimeImmutable         $brokerCreatedAt,
-        private ?array                     $idempotencyResponse,
+        private readonly OrderId $id,
+        private readonly IdempotencyKey $idempotencyKey,
+        private readonly ClientId $clientId,
+        private readonly Ticker $ticker,
+        private readonly OrderDirection $direction,
+        private readonly OrderType $orderType,
+        private readonly Currency $currency,
+        private readonly Quantity $requestedQuantity,
+        private OrderStatus $status,
+        private int $executedQuantity,
+        private ?string $brokerOrderId,
+        private ?string $brokerStatus,
+        private ?int $avgPriceCents,
+        private ?int $totalValueCents,
+        private ?int $expectedCommissionCents,
+        private ?DateTimeImmutable $brokerCreatedAt,
+        private ?DateTimeImmutable $brokerUpdatedAt,
+        private ?DateTimeImmutable $lastPolledAt,
+        private ?array $idempotencyResponse,
         private readonly DateTimeImmutable $createdAt,
-        private DateTimeImmutable          $updatedAt,
+        private DateTimeImmutable $updatedAt,
     ) {
     }
 
@@ -65,8 +69,12 @@ final class Order
             executedQuantity: 0,
             brokerOrderId: null,
             brokerStatus: null,
+            avgPriceCents: null,
+            totalValueCents: null,
             expectedCommissionCents: null,
             brokerCreatedAt: null,
+            brokerUpdatedAt: null,
+            lastPolledAt: null,
             idempotencyResponse: null,
             createdAt: $now,
             updatedAt: $now,
@@ -87,8 +95,12 @@ final class Order
         int $executedQuantity,
         ?string $brokerOrderId,
         ?string $brokerStatus,
+        ?int $avgPriceCents,
+        ?int $totalValueCents,
         ?int $expectedCommissionCents,
         ?DateTimeImmutable $brokerCreatedAt,
+        ?DateTimeImmutable $brokerUpdatedAt,
+        ?DateTimeImmutable $lastPolledAt,
         ?array $idempotencyResponse,
         DateTimeImmutable $createdAt,
         DateTimeImmutable $updatedAt,
@@ -106,8 +118,12 @@ final class Order
             executedQuantity: $executedQuantity,
             brokerOrderId: $brokerOrderId,
             brokerStatus: $brokerStatus,
+            avgPriceCents: $avgPriceCents,
+            totalValueCents: $totalValueCents,
             expectedCommissionCents: $expectedCommissionCents,
             brokerCreatedAt: $brokerCreatedAt,
+            brokerUpdatedAt: $brokerUpdatedAt,
+            lastPolledAt: $lastPolledAt,
             idempotencyResponse: $idempotencyResponse,
             createdAt: $createdAt,
             updatedAt: $updatedAt,
@@ -194,9 +210,90 @@ final class Order
         $this->updatedAt = new DateTimeImmutable();
     }
 
+    /**
+     * Applies broker execution snapshot from polling.
+     * Returns false when status is unknown, snapshot is invalid, or order is terminal.
+     */
+    public function applyBrokerExecution(
+        string $brokerStatus,
+        int $executedQuantity,
+        ?int $avgPriceCents,
+        ?int $totalValueCents,
+        DateTimeImmutable $brokerUpdatedAt,
+    ): bool {
+        if ($this->status->isTerminal()) {
+            return false;
+        }
+
+        if ($this->brokerOrderId === null) {
+            return false;
+        }
+
+        $mappedStatus = OrderStatus::fromBrokerStatus($brokerStatus);
+
+        if ($mappedStatus === null) {
+            return false;
+        }
+
+        if ($executedQuantity < 0 || $executedQuantity > $this->requestedQuantity->toInt()) {
+            return false;
+        }
+
+        if (!$this->canTransitionTo($mappedStatus)) {
+            return false;
+        }
+
+        $this->brokerStatus = $brokerStatus;
+        $this->executedQuantity = $executedQuantity;
+        $this->avgPriceCents = $avgPriceCents;
+        $this->totalValueCents = $totalValueCents;
+        $this->brokerUpdatedAt = $brokerUpdatedAt;
+        $this->status = $mappedStatus;
+        $this->updatedAt = new DateTimeImmutable();
+
+        return true;
+    }
+
+    public function markPolled(DateTimeImmutable $polledAt): void
+    {
+        $this->lastPolledAt = $polledAt;
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
     public function isAlreadySentToBroker(): bool
     {
         return $this->brokerOrderId !== null;
+    }
+
+    public function isPollable(): bool
+    {
+        return $this->brokerOrderId !== null && $this->status->isPollable();
+    }
+
+    private function canTransitionTo(OrderStatus $target): bool
+    {
+        if ($this->status === $target) {
+            return true;
+        }
+
+        return match ($this->status) {
+            OrderStatus::SentToBroker => in_array($target, [
+                OrderStatus::PendingRouting,
+                OrderStatus::PartiallyFilled,
+                OrderStatus::Filled,
+                OrderStatus::Rejected,
+            ], true),
+            OrderStatus::PendingRouting => in_array($target, [
+                OrderStatus::PartiallyFilled,
+                OrderStatus::Filled,
+                OrderStatus::Rejected,
+            ], true),
+            OrderStatus::PartiallyFilled => in_array($target, [
+                OrderStatus::Filled,
+                OrderStatus::Rejected,
+            ], true),
+            default => false,
+        };
     }
 
     public function id(): OrderId
@@ -259,6 +356,16 @@ final class Order
         return $this->brokerStatus;
     }
 
+    public function avgPriceCents(): ?int
+    {
+        return $this->avgPriceCents;
+    }
+
+    public function totalValueCents(): ?int
+    {
+        return $this->totalValueCents;
+    }
+
     public function expectedCommissionCents(): ?int
     {
         return $this->expectedCommissionCents;
@@ -267,6 +374,16 @@ final class Order
     public function brokerCreatedAt(): ?DateTimeImmutable
     {
         return $this->brokerCreatedAt;
+    }
+
+    public function brokerUpdatedAt(): ?DateTimeImmutable
+    {
+        return $this->brokerUpdatedAt;
+    }
+
+    public function lastPolledAt(): ?DateTimeImmutable
+    {
+        return $this->lastPolledAt;
     }
 
     /** @return array<string, mixed>|null */
