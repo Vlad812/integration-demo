@@ -82,6 +82,31 @@ HTTP-контейнер `integration-broker-api` стартует командо
 
 Пример: `CreateOrderAction` собирает `CreateOrderCommand` и передаёт в `CreateOrderHandler`. Domain-сущность `Order` отделена от Doctrine `OrderOrm` через Mapper.
 
+Структура `main-services/integration-broker-api/app/src`:
+
+```
+src/
+├── Application/
+│   ├── Command/
+│   ├── Exception/
+│   ├── Message/
+│   └── Shared/
+├── Domain/
+│   ├── Entity/
+│   ├── Exception/
+│   ├── Repository/
+│   ├── Shared/
+│   └── ValueObject/
+└── Infrastructure/
+    ├── Broker/
+    ├── Http/
+    ├── Logging/
+    ├── Messenger/
+    ├── Persistence/
+    ├── Security/
+    └── Service/
+```
+
 ### Идемпотентность
 
 Клиент передаёт `Idempotency-Key` (UUID). Повторный запрос с тем же ключом возвращает сохранённый ответ, без второй заявки брокеру.
