@@ -5,7 +5,7 @@ include $(PROJECT_ROOT)/config.mk
 COMPOSE_FILE := $(SERVICE_DIR)/docker-compose.yaml
 COMPOSE := docker compose -f $(COMPOSE_FILE) -p $(PROJECT_GROUP_MAIN_SERVICE)
 
-.PHONY: integration-broker-api-build integration-broker-api-init integration-broker-api-update integration-broker-api-up integration-broker-api-down
+.PHONY: integration-broker-api-build integration-broker-api-init integration-broker-api-update integration-broker-api-up integration-broker-api-down integration-broker-api-test
 
 integration-broker-api-build:
 	@echo build integration-broker-api
@@ -26,3 +26,7 @@ integration-broker-api-up:
 integration-broker-api-down:
 	@echo down integration-broker-api
 	$(COMPOSE) down -v
+
+integration-broker-api-test:
+	@echo test integration-broker-api
+	$(COMPOSE) run --rm integration-broker-api-php-cli composer test
